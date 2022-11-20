@@ -46,8 +46,8 @@ export function extractAllGetters(obj: Record<string, unknown>) {
 export function serializeEntity<T extends IEntity>(
   obj: Partial<T>,
   subColMetadata: SubCollectionMetadata[]
-): Record<string, unknown> {
-  const objectGetters = extractAllGetters(obj as Record<string, unknown>);
+): Record<string, any> {
+  const objectGetters = extractAllGetters(obj as Record<string, any>);
 
   const serializableObj = { ...obj, ...objectGetters };
 

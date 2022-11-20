@@ -10,6 +10,7 @@ import {
   IEntity,
   IWherePropParam,
   ICustomQuery,
+  IQueryCursor,
 } from './types';
 
 export class QueryBuilder<T extends IEntity> implements IQueryBuilder<T> {
@@ -18,6 +19,11 @@ export class QueryBuilder<T extends IEntity> implements IQueryBuilder<T> {
   protected orderByObj: IOrderByParams;
   protected customQueryFunction?: ICustomQuery<T>;
   protected orderByFields: Set<string> = new Set();
+  protected startAtVal: any[];
+  protected startAfterVal: any[];
+  protected endAtVal: any[];
+  protected endBeforeVal: any[];
+  protected offsetVal: number;
 
   constructor(protected executor: IQueryExecutor<T>) {}
 
@@ -25,6 +31,13 @@ export class QueryBuilder<T extends IEntity> implements IQueryBuilder<T> {
     if (typeof param === 'string') return param;
     return getPath<T, (t: T) => unknown>(param).join('.');
   };
+
+  private createCursor = (): IQueryCursor => ({
+    startAt: this.startAtVal,
+    startAfter: this.startAfterVal,
+    endAt: this.endAtVal,
+    endBefore: this.endBeforeVal,
+  });
 
   whereEqualTo(param: IWherePropParam<T>, val: IFirestoreVal) {
     this.queries.push({
@@ -144,6 +157,56 @@ export class QueryBuilder<T extends IEntity> implements IQueryBuilder<T> {
     return this;
   }
 
+  offset(offsetVal: number) {
+    if (this.offsetVal) {
+      throw new Error(
+        'A limit function cannot be called more than once in the same query expression'
+      );
+    }
+    this.offsetVal = offsetVal;
+    return this;
+  }
+
+  startAt(...startAtVal: any[]) {
+    if (this.startAtVal || this.startAfterVal) {
+      throw new Error(
+        'A startAt function cannot be called more than once in the same query expression'
+      );
+    }
+    this.startAtVal = startAtVal;
+    return this;
+  }
+
+  startAfter(...startAfterVal: any[]) {
+    if (this.startAtVal || this.startAfterVal) {
+      throw new Error(
+        'A startAt function cannot be called more than once in the same query expression'
+      );
+    }
+    this.startAfterVal = startAfterVal;
+    return this;
+  }
+
+  endAt(...endAtVal: any[]) {
+    if (this.endAtVal || this.endBeforeVal) {
+      throw new Error(
+        'A endAt function cannot be called more than once in the same query expression'
+      );
+    }
+    this.endAtVal = endAtVal;
+    return this;
+  }
+
+  endBefore(...endBeforeVal: any[]) {
+    if (this.endAtVal || this.endBeforeVal) {
+      throw new Error(
+        'A endAt function cannot be called more than once in the same query expression'
+      );
+    }
+    this.endBeforeVal = endBeforeVal;
+    return this;
+  }
+
   orderByAscending(prop: IWherePropParam<T>) {
     const fieldProp: string = typeof prop == 'string' ? prop : '';
     const alreadyOrderedByField = this.orderByFields.has(fieldProp);
@@ -194,7 +257,9 @@ export class QueryBuilder<T extends IEntity> implements IQueryBuilder<T> {
       this.limitVal,
       this.orderByObj,
       false,
-      this.customQueryFunction
+      this.customQueryFunction,
+      this.offsetVal,
+      this.createCursor()
     );
   }
 
@@ -218,5 +283,9 @@ export class QueryBuilder<T extends IEntity> implements IQueryBuilder<T> {
     );
 
     return queryResult.length ? queryResult[0] : null;
+  }
+
+  async count() {
+    return this.executor.executeCount(this.queries, this.customQueryFunction);
   }
 }

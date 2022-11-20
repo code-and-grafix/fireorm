@@ -10,6 +10,11 @@ class FakeExecutor implements IQueryExecutor<Test> {
     this.queries = queries;
     return Promise.resolve([]);
   }
+
+  executeCount(queries: IFireOrmQueryLine[]): Promise<number> {
+    this.queries = queries;
+    return Promise.resolve(0);
+  }
 }
 
 describe('QueryBuilder', () => {

@@ -20,6 +20,7 @@ import {
   IEntityConstructor,
   ITransactionReferenceStorage,
   ICustomQuery,
+  IQueryCursor,
 } from './types';
 
 import { isDocumentReference, isGeoPoint, isObject, isTimestamp } from './TypeGuards';
@@ -62,7 +63,7 @@ export abstract class AbstractFirestoreRepository<T extends IEntity>
     this.firestoreColRef = firestoreRef.collection(this.path);
   }
 
-  protected toSerializableObject = (obj: T): Record<string, unknown> =>
+  protected toSerializableObject = (obj: T): Record<string, T> =>
     serializeEntity(obj, this.colMetadata.subCollections);
 
   protected transformFirestoreTypes = (obj: Record<string, unknown>) => {
@@ -342,6 +343,75 @@ export abstract class AbstractFirestoreRepository<T extends IEntity>
   }
 
   /**
+   * Returns a new QueryBuilder that starts at the provided document
+   * to return. Can only be used once per query.
+   *
+   * @param {number} startAtVal The snapshot of the document to start at.
+   * @returns {IQueryBuilder<T>} QueryBuilder A new QueryBuilder with
+   * the specified starting cursor applied
+   * @memberof AbstractFirestoreRepository
+   */
+  startAt(...startAtVal: any[]): IQueryBuilder<T> {
+    return startAtVal ? new QueryBuilder<T>(this).startAt(startAtVal) : new QueryBuilder<T>(this);
+  }
+
+  /**
+   * Returns a new QueryBuilder that starts after the provided document
+   * Can only be used once per query.
+   *
+   * @param {number} startAfterVal The snapshot of the document to start after.
+   * @returns {IQueryBuilder<T>} QueryBuilder A new QueryBuilder with
+   * the specified starting after applied
+   * @memberof AbstractFirestoreRepository
+   */
+  startAfter(...startAfterVal: any[]): IQueryBuilder<T> {
+    return startAfterVal
+      ? new QueryBuilder<T>(this).startAfter(startAfterVal)
+      : new QueryBuilder<T>(this);
+  }
+
+  /**
+   * Returns a new QueryBuilder that ends at the provided document
+   * Can only be used once per query.
+   *
+   * @param {number} endAtVal The snapshot of the document to end at.
+   * @returns {IQueryBuilder<T>} QueryBuilder A new QueryBuilder with
+   * the specified ending cursor applied
+   * @memberof AbstractFirestoreRepository
+   */
+  endAt(...endAtVal: any[]): IQueryBuilder<T> {
+    return endAtVal ? new QueryBuilder<T>(this).endAt(endAtVal) : new QueryBuilder<T>(this);
+  }
+
+  /**
+   * Returns a new QueryBuilder that ends before the provided document
+   * Can only be used once per query.
+   *
+   * @param {number} endBeforeVal The snapshot of the document to end before.
+   * @returns {IQueryBuilder<T>} QueryBuilder A new QueryBuilder with
+   * the specified ending before applied
+   * @memberof AbstractFirestoreRepository
+   */
+  endBefore(...endBeforeVal: any[]): IQueryBuilder<T> {
+    return endBeforeVal
+      ? new QueryBuilder<T>(this).endBefore(endBeforeVal)
+      : new QueryBuilder<T>(this);
+  }
+
+  /**
+   * Returns a new QueryBuilder that specifies the offset of the returned results.
+   * Can only be used once per query.
+   *
+   * @param {number} endBeforeVal The offset to apply to the Query results.
+   * @returns {IQueryBuilder<T>} QueryBuilder A new QueryBuilder with
+   * the specified ending before applied
+   * @memberof AbstractFirestoreRepository
+   */
+  offset(offsetVal: number): IQueryBuilder<T> {
+    return offsetVal ? new QueryBuilder<T>(this).offset(offsetVal) : new QueryBuilder<T>(this);
+  }
+
+  /**
    * Returns a new QueryBuilder with an additional ascending order
    * specified by @param prop. Can only be used once per query.
    *
@@ -391,6 +461,17 @@ export abstract class AbstractFirestoreRepository<T extends IEntity>
    */
   findOne(): Promise<T | null> {
     return new QueryBuilder<T>(this).findOne();
+  }
+
+  /**
+   * Execute the query and applies all the filters (if specified) and return a count
+   *
+   * @returns {Promise<T | null>} Aggregated DocumentSnapshot with the count of the documents that matched the filters
+   * (if specified)
+   * @memberof AbstractFirestoreRepository
+   */
+  count(): Promise<number> {
+    return new QueryBuilder<T>(this).count();
   }
 
   /**
@@ -454,8 +535,25 @@ export abstract class AbstractFirestoreRepository<T extends IEntity>
     limitVal?: number,
     orderByObj?: IOrderByParams,
     single?: boolean,
-    customQuery?: ICustomQuery<T>
+    customQuery?: ICustomQuery<T>,
+    offsetVal?: number,
+    cursor?: IQueryCursor
   ): Promise<T[]>;
+
+  /**
+   * Takes all the queries stored by QueryBuilder and executes them.
+   * Must be implemented by base repositores
+   *
+   * @abstract
+   * @param {IFireOrmQueryLine[]} queries list of queries stored in
+   * QueryBuilder
+   * @returns {Promise<number>} number of matching documents
+   * @memberof AbstractFirestoreRepository
+   */
+  abstract executeCount(
+    queries: IFireOrmQueryLine[],
+    customQuery?: ICustomQuery<T>
+  ): Promise<number>;
 
   /**
    * Retrieve a document with the specified id.

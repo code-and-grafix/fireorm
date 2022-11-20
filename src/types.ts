@@ -51,6 +51,7 @@ export interface IQueryable<T extends IEntity> {
   find(): Promise<T[]>;
   findOne(): Promise<T | null>;
   customQuery(func: ICustomQuery<T>): IQueryBuilder<T>;
+  count(): Promise<number>;
 }
 
 export interface IOrderable<T extends IEntity> {
@@ -62,7 +63,34 @@ export interface ILimitable<T extends IEntity> {
   limit(limitVal: number): IQueryBuilder<T>;
 }
 
-export type IQueryBuilder<T extends IEntity> = IQueryable<T> & IOrderable<T> & ILimitable<T>;
+export interface IOffsetable<T extends IEntity> {
+  offset(offsetVal: number): IQueryBuilder<T>;
+}
+
+export interface IStartableAt<T extends IEntity> {
+  startAt(...startAtVal: any[]): IQueryBuilder<T>;
+}
+
+export interface IStartableAfter<T extends IEntity> {
+  startAfter(...startAfterVal: any[]): IQueryBuilder<T>;
+}
+
+export interface IEndableAt<T extends IEntity> {
+  endAt(...endAtVal: any[]): IQueryBuilder<T>;
+}
+
+export interface IEndableBefore<T extends IEntity> {
+  endBefore(...endBeforeVal: any[]): IQueryBuilder<T>;
+}
+
+export type IQueryBuilder<T extends IEntity> = IQueryable<T> &
+  IOrderable<T> &
+  ILimitable<T> &
+  IOffsetable<T> &
+  IStartableAt<T> &
+  IStartableAfter<T> &
+  IEndableAt<T> &
+  IEndableBefore<T>;
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export type ICustomQuery<T> = (
@@ -76,8 +104,13 @@ export interface IQueryExecutor<T> {
     limitVal?: number,
     orderByObj?: IOrderByParams,
     single?: boolean,
-    customQuery?: ICustomQuery<T>
+    customQuery?: ICustomQuery<T>,
+    offsetVal?: number,
+    cursor?: IQueryCursor,
+    count?: boolean
   ): Promise<T[]>;
+
+  executeCount(queries: IFireOrmQueryLine[], customQuery?: ICustomQuery<T>): Promise<number>;
 }
 
 export interface IBatchRepository<T extends IEntity> {
@@ -198,4 +231,11 @@ export interface ValidatorOptions {
    * Settings true will cause fail validation of unknown objects.
    */
   forbidUnknownValues?: boolean;
+}
+
+export interface IQueryCursor {
+  startAt?: any[];
+  startAfter?: any[];
+  endAt?: any[];
+  endBefore?: any[];
 }

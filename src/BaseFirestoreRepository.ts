@@ -10,6 +10,7 @@ import {
   PartialBy,
   ITransactionRepository,
   ICustomQuery,
+  IQueryCursor,
 } from './types';
 
 import { getMetadataStorage } from './MetadataUtils';
@@ -75,6 +76,13 @@ export class BaseFirestoreRepository<T extends IEntity>
     await this.firestoreColRef.doc(id).delete();
   }
 
+  async count(): Promise<number> {
+    return this.firestoreColRef
+      .count()
+      .get()
+      .then(c => c.data().count);
+  }
+
   async runTransaction<R>(executor: (tran: ITransactionRepository<T>) => Promise<R>) {
     // Importing here to prevent circular dependency
     const { runTransaction } = await import('./helpers');
@@ -95,7 +103,9 @@ export class BaseFirestoreRepository<T extends IEntity>
     limitVal?: number,
     orderByObj?: IOrderByParams,
     single?: boolean,
-    customQuery?: ICustomQuery<T>
+    customQuery?: ICustomQuery<T>,
+    offsetVal?: number,
+    cursor?: IQueryCursor
   ): Promise<T[]> {
     let query = queries.reduce<Query>((acc, cur) => {
       const op = cur.operator as WhereFilterOp;
@@ -104,6 +114,26 @@ export class BaseFirestoreRepository<T extends IEntity>
 
     if (orderByObj) {
       query = query.orderBy(orderByObj.fieldPath, orderByObj.directionStr);
+    }
+
+    if (cursor?.startAt) {
+      query = query.startAt(...cursor?.startAt);
+    }
+
+    if (cursor?.startAfter) {
+      query = query.startAfter(...cursor?.startAfter);
+    }
+
+    if (cursor?.endAt) {
+      query = query.endAt(...cursor?.endAt);
+    }
+
+    if (cursor?.endBefore) {
+      query = query.endBefore(...cursor?.endBefore);
+    }
+
+    if (offsetVal) {
+      query = query.offset(offsetVal);
     }
 
     if (single) {
@@ -117,5 +147,24 @@ export class BaseFirestoreRepository<T extends IEntity>
     }
 
     return query.get().then(this.extractTFromColSnap);
+  }
+
+  async executeCount(
+    queries: Array<IFireOrmQueryLine>,
+    customQuery?: ICustomQuery<T>
+  ): Promise<number> {
+    let query = queries.reduce<Query>((acc, cur) => {
+      const op = cur.operator as WhereFilterOp;
+      return acc.where(cur.prop, op, cur.val);
+    }, this.firestoreColRef);
+
+    if (customQuery) {
+      query = await customQuery(query, this.firestoreColRef);
+    }
+
+    return query
+      .count()
+      .get()
+      .then(doc => doc.data().count ?? 0);
   }
 }

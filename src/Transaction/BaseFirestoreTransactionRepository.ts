@@ -36,6 +36,15 @@ export class TransactionRepository<T extends IEntity>
       .then(c => this.extractTFromColSnap(c, this.transaction, this.tranRefStorage));
   }
 
+  async executeCount(queries: IFireOrmQueryLine[]): Promise<number> {
+    const query = queries.reduce<Query>((acc, cur) => {
+      const op = cur.operator as WhereFilterOp;
+      return acc.where(cur.prop, op, cur.val);
+    }, this.firestoreColRef);
+
+    return this.transaction.get(query.count()).then(snapshot => snapshot.data().count ?? 0);
+  }
+
   findById(id: string) {
     const query = this.firestoreColRef.doc(id);
 
