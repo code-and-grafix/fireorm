@@ -4,6 +4,7 @@ import {
   QuerySnapshot,
   CollectionReference,
   Transaction,
+  DocumentReference,
 } from '@google-cloud/firestore';
 import { serializeKey } from './Decorators/Serialize';
 import { ValidationError } from './Errors/ValidationError';
@@ -576,7 +577,7 @@ export abstract class AbstractFirestoreRepository<T extends IEntity>
    * @returns {Promise<T>}
    * @memberof AbstractFirestoreRepository
    */
-  abstract create(item: PartialBy<T, 'id'>): Promise<T>;
+  abstract create(item: PartialBy<T, 'id'>, userRef?: DocumentReference): Promise<T>;
 
   /**
    * Updates a document.
@@ -587,7 +588,7 @@ export abstract class AbstractFirestoreRepository<T extends IEntity>
    * @returns {Promise<T>}
    * @memberof AbstractFirestoreRepository
    */
-  abstract update(item: T): Promise<T>;
+  abstract update(item: T, userRef?: DocumentReference): Promise<T>;
 
   /**
    * Deletes a document.

@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 
-import { Query, WhereFilterOp } from '@google-cloud/firestore';
+import { DocumentReference, Query, WhereFilterOp } from '@google-cloud/firestore';
 
 import {
   IRepository,
@@ -28,7 +28,7 @@ export class BaseFirestoreRepository<T extends IEntity>
       .then(d => (d.exists ? this.extractTFromDocSnap(d) : null));
   }
 
-  async create(item: PartialBy<T, 'id'>): Promise<T> {
+  async create(item: PartialBy<T, 'id'>, userRef?: DocumentReference): Promise<T> {
     if (this.config.validateModels) {
       const errors = await this.validate(item as T);
 
@@ -50,6 +50,11 @@ export class BaseFirestoreRepository<T extends IEntity>
       item.id = doc.id;
     }
 
+    if (userRef) {
+      (item as any).createdBy = userRef;
+      (item as any).createdAt = new Date();
+    }
+
     await doc.set(this.toSerializableObject(item as T));
 
     this.initializeSubCollections(item as T);
@@ -57,13 +62,18 @@ export class BaseFirestoreRepository<T extends IEntity>
     return item as T;
   }
 
-  async update(item: T) {
+  async update(item: T, userRef?: DocumentReference) {
     if (this.config.validateModels) {
       const errors = await this.validate(item);
 
       if (errors.length) {
         throw errors;
       }
+    }
+
+    if (userRef) {
+      (item as any).modifiedBy = userRef;
+      (item as any).modifiedAt = new Date();
     }
 
     // TODO: handle errors

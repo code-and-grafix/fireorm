@@ -1,7 +1,7 @@
 {
   "name": "fireorm",
   "description": "ORM for Firestore",
-  "version": "0.0.14-development",
+  "version": "0.0.15-development",
   "author": "Willy Ovalle <willyovalle16@gmail.com>",
   "homepage": "https://fireorm.js.org",
   "license": "ISC",
