@@ -55,6 +55,7 @@ export class BaseFirestoreRepository<T extends IEntity>
       (item as any).createdAt = new Date();
     }
 
+    item = this.transformFirestoreTypesBeforeSave(item);
     await doc.set(this.toSerializableObject(item as T));
 
     this.initializeSubCollections(item as T);
@@ -71,12 +72,19 @@ export class BaseFirestoreRepository<T extends IEntity>
       }
     }
 
+    // do not update audit fields
+    delete (item as any).createdAt;
+    delete (item as any).createdBy;
+    delete (item as any).modifiedBy;
+    delete (item as any).modifiedAt;
+
     if (userRef) {
       (item as any).modifiedBy = userRef;
       (item as any).modifiedAt = new Date();
     }
 
     // TODO: handle errors
+    item = this.transformFirestoreTypesBeforeSave(item as Record<string, unknown>);
     await this.firestoreColRef.doc(item.id).update(this.toSerializableObject(item));
     return item;
   }

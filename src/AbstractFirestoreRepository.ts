@@ -5,6 +5,8 @@ import {
   CollectionReference,
   Transaction,
   DocumentReference,
+  Timestamp,
+  Firestore,
 } from '@google-cloud/firestore';
 import { serializeKey } from './Decorators/Serialize';
 import { ValidationError } from './Errors/ValidationError';
@@ -24,7 +26,13 @@ import {
   IQueryCursor,
 } from './types';
 
-import { isDocumentReference, isGeoPoint, isObject, isTimestamp } from './TypeGuards';
+import {
+  isDocumentReference,
+  isGeoPoint,
+  isObject,
+  isParsedDocumentReference,
+  isTimestamp,
+} from './TypeGuards';
 
 import { getMetadataStorage } from './MetadataUtils';
 import { MetadataStorageConfig, FullCollectionMetadata } from './MetadataStorage';
@@ -42,6 +50,7 @@ export abstract class AbstractFirestoreRepository<T extends IEntity>
   protected readonly path: string;
   protected readonly config: MetadataStorageConfig;
   protected readonly firestoreColRef: CollectionReference;
+  protected readonly firestoreRef: Firestore;
 
   constructor(pathOrConstructor: string | IEntityConstructor) {
     super();
@@ -62,6 +71,7 @@ export abstract class AbstractFirestoreRepository<T extends IEntity>
     this.colMetadata = colMetadata;
     this.path = typeof pathOrConstructor === 'string' ? pathOrConstructor : this.colMetadata.name;
     this.firestoreColRef = firestoreRef.collection(this.path);
+    this.firestoreRef = firestoreRef;
   }
 
   protected toSerializableObject = (obj: T): Record<string, T> =>
@@ -84,6 +94,19 @@ export abstract class AbstractFirestoreRepository<T extends IEntity>
       }
     });
     return obj;
+  };
+
+  protected transformFirestoreTypesBeforeSave = <T>(obj: Record<string, unknown>): T => {
+    Object.keys(obj).forEach(key => {
+      const val = obj[key];
+      if (val instanceof Date) {
+        obj[key] = Timestamp.fromDate(val);
+      }
+      if (isParsedDocumentReference(val) || isDocumentReference(val)) {
+        obj[key] = this.firestoreRef.doc(val.path);
+      }
+    });
+    return obj as T;
   };
 
   protected initializeSubCollections = (

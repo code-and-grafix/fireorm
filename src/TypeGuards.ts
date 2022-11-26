@@ -15,3 +15,9 @@ export function isDocumentReference(x: unknown): x is DocumentReference {
 export function isObject(x: unknown): x is Record<string, unknown> {
   return typeof x === 'object';
 }
+
+export function isParsedDocumentReference<T extends { id?: string; path?: string }>(
+  x: T | unknown
+): x is { id: string; path: string } {
+  return isObject(x) && x !== null && !!x.id && !!x.path;
+}
